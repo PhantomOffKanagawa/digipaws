@@ -153,6 +153,14 @@
                     android:enabled="false"
                     android:text="@string/setup_auto_focus" />
 
+                <Button
+                    android:id="@+id/nfc_focus_settings"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/nfc_focus_settings" />
+
                 <TextView
                     android:id="@+id/focus_mode_warning"
                     style="@style/TextAppearance.Material3.BodySmall"

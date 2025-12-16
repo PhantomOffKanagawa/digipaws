@@ -322,4 +322,30 @@ class SavedPreferencesLoader(private val context: Context) {
             context.getSharedPreferences("grayscale", Context.MODE_PRIVATE)
         sharedPreferences.edit().putStringSet("apps", apps).apply()
     }
+
+    fun saveNfcFocusSettings(settings: NfcFocusSettings) {
+        val sharedPreferences =
+            context.getSharedPreferences("nfc_settings", Context.MODE_PRIVATE)
+        val editor = sharedPreferences.edit()
+        val gson = Gson()
+        val json = gson.toJson(settings)
+        editor.putString("nfc_focus", json)
+        editor.apply()
+    }
+
+    fun getNfcFocusSettings(): NfcFocusSettings {
+        val sharedPreferences =
+            context.getSharedPreferences("nfc_settings", Context.MODE_PRIVATE)
+        val gson = Gson()
+        val json = sharedPreferences.getString("nfc_focus", null)
+        if (json.isNullOrEmpty()) return NfcFocusSettings()
+        val type = object : TypeToken<NfcFocusSettings>() {}.type
+        return gson.fromJson(json, type)
+    }
+
+    data class NfcFocusSettings(
+        val isEnabled: Boolean = true,
+        val defaultDurationMins: Int = 25,
+        val modeType: Int = nethical.digipaws.Constants.FOCUS_MODE_BLOCK_ALL_EX_SELECTED
+    )
 }

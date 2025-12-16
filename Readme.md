@@ -31,9 +31,11 @@ DigiPaws is an open-source Android productivity utility designed to help users r
 
 - **Open Source**: Fully transparent and free to use, with the source code available for community contributions.
 - **Productivity Enhancement**: Helps build healthier digital habits and reduce screen addiction.
+- **Customizable Triggers**: From in-app controls to hardware tags like BRICK or FOQOS
 - **Versatile Blockers**: Take control of your digital environment by blocking apps, keywords, and unwanted in-app screens (e.g., YouTube shorts, comments).
 - **Widgets** : Add stats to your homescreen
 - **App Usage Stats** : Display Your stats
+
 ## Screenshots
 Click on any image to enlarge it.
 <table>
@@ -69,6 +71,8 @@ Click on any image to enlarge it.
 - [x] Redirect to a different website when a blocked keyword is found
 - [ ] Modular and downloadable view blockers
 - [ ] Expand the app to iOS and desktop.
+- [x] NFC support for toggling when scanning a tag
+- [ ] QR support for toggling when scanning a qr code
 
 ## Modes
 

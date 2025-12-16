@@ -12,6 +12,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.nfc.NfcAdapter
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -57,6 +58,7 @@ import nethical.digipaws.ui.dialogs.TweakKeywordBlocker
 import nethical.digipaws.ui.dialogs.TweakKeywordPack
 import nethical.digipaws.ui.dialogs.TweakUsageTracker
 import nethical.digipaws.ui.dialogs.TweakViewBlockerCheatHours
+import nethical.digipaws.ui.dialogs.TweakNfcSettings
 import nethical.digipaws.ui.dialogs.TweakViewBlockerWarning
 import nethical.digipaws.ui.fragments.anti_uninstall.ChooseModeFragment
 import nethical.digipaws.ui.fragments.installation.AccessibilityGuide
@@ -368,6 +370,12 @@ class MainActivity : AppCompatActivity() {
             addAutoFocusHoursActivity.launch(intent, options)
         }
 
+        binding.nfcFocusSettings.setOnClickListener {
+            TweakNfcSettings(savedPreferencesLoader).show(
+                supportFragmentManager,
+                "tweak_nfc_settings"
+            )
+        }
 
         binding.startFocusMode.setOnClickListener {
 
@@ -542,6 +550,8 @@ class MainActivity : AppCompatActivity() {
             val doesAntiUninstallBlockView =
                 antiUninstallInfo.getBoolean("is_configuring_blocked", false)
 
+            val hasNfc = NfcAdapter.getDefaultAdapter(this@MainActivity) != null
+
             withContext(Dispatchers.Main) {
                 // App Blocker
                 updateChip(isAppBlockerOn, binding.appBlockerStatusChip, binding.appBlockerWarning)
@@ -604,6 +614,7 @@ class MainActivity : AppCompatActivity() {
                     startFocusMode.isEnabled = isAppBlockerOn
                     selectFocusBlockedApps.isEnabled = isAppBlockerOn
                     autoFocus.isEnabled = isAppBlockerOn
+                    nfcFocusSettings.isEnabled = isAppBlockerOn && hasNfc
                 }
 
                 // Anti-Uninstall settings

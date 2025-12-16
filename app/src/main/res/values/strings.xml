@@ -172,4 +172,19 @@
     <string name="join_telegram">Join Telegram</string>
     <string name="guide">Guide</string>
     <string name="go_back">Go back</string>
+    <string name="nfc_focus_mode_started">Focus Mode started via NFC</string>
+    <string name="nfc_focus_mode_started_mins">Focus Mode started for %1$d minutes</string>
+    <string name="nfc_focus_mode_stopped">Focus Mode stopped</string>
+    <string name="nfc_focus_mode_already_active">Focus Mode is already active</string>
+    <string name="nfc_focus_mode_not_active">Focus Mode is not active</string>
+    <string name="nfc_invalid_payload">Invalid NFC payload</string>
+    <string name="nfc_focus_settings">NFC Trigger Settings</string>
+    <string name="nfc_settings_title">NFC Focus Mode</string>
+    <string name="nfc_settings_duration_label">Default duration (can be overridden in NFC tag)</string>
+    <string name="nfc_settings_mode_label">Block mode</string>
+    <string name="nfc_block_all_except_selected">Block all apps except selected</string>
+    <string name="nfc_block_only_selected">Block only selected apps</string>
+    <string name="nfc_settings_hint">NFC tag formats:\n• digipaws://focus/toggle\n• digipaws://focus/start\n• digipaws://focus/start/30 (30 mins)\n• digipaws://focus/stop</string>
+    <string name="nfc_enabled">Enable NFC triggers</string>
+    <string name="nfc_trigger_disabled">NFC triggers are disabled</string>
 </resources>

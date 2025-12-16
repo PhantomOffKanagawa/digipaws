@@ -12,6 +12,8 @@
         android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions" />
 <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
+    <uses-permission android:name="android.permission.NFC" />
+    <uses-feature android:name="android.hardware.nfc" android:required="false" />
     <application
         android:name=".Digipaws"
         android:allowBackup="true"
@@ -22,6 +24,18 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.DigiPaws"
         tools:targetApi="34">
+        <activity
+            android:name=".ui.activity.NfcTriggerActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.Digipaws.TransparentDialog">
+            <intent-filter>
+                <action android:name="android.nfc.action.NDEF_DISCOVERED" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="digipaws" android:host="focus" />
+            </intent-filter>
+        </activity>
         <activity
             android:name=".ui.activity.ShortcutActivity"
             android:excludeFromRecents="true"

@@ -12,9 +12,8 @@ class NotificationTimerManager(private val context: Context) {
     companion object {
         private const val CHANNEL_ID = "TimerNotificationChannel"
         private const val NOTIFICATION_ID = 1001
+        private var countDownTimer: CountDownTimer? = null
     }
-
-    private var countDownTimer: CountDownTimer? = null
     private val notificationManager: NotificationManager by lazy {
         context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     }
