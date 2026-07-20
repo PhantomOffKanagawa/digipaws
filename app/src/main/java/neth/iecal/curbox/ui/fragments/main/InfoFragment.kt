@@ -14,6 +14,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.io.File
 import neth.iecal.curbox.BuildConfig
@@ -44,6 +45,7 @@ class InfoFragment : Fragment() {
 
         setupAccountSection()
         setupUsageTrackingSettings()
+        setupDisplaySettings()
         setupClickListeners()
         LanguageUtils.bindLanguageSelector(binding.languageSelector, binding.textCurrentLanguage)
     }
@@ -72,6 +74,51 @@ class InfoFragment : Fragment() {
                     binding.switchWebsiteUsageTracking.isChecked = settings.isWebsiteUsageTrackingEnabled
                     binding.switchHideServiceNotification.isChecked = settings.hideServiceNotification
                     renderingTrackingSettings = false
+                }
+            }
+        }
+    }
+
+    private var renderingDisplaySettings = false
+    // One switch per ASCII art, built once and kept so the settings collector can refresh them.
+    private val asciiSwitches = mutableMapOf<String, com.google.android.material.materialswitch.MaterialSwitch>()
+
+    private fun setupDisplaySettings() {
+        binding.switchUsageIconsGrayscale.setOnCheckedChangeListener { _, checked ->
+            if (!renderingDisplaySettings) viewLifecycleOwner.lifecycleScope.launch {
+                dataStore.updateUsageIconsGrayscale(checked)
+            }
+        }
+
+        val container = binding.asciiToggleContainer
+        neth.iecal.curbox.hardcoded.AsciiArts.POOL.forEach { art ->
+            val switch = com.google.android.material.materialswitch.MaterialSwitch(requireContext()).apply {
+                text = getString(art.labelRes)
+                minHeight = (56 * resources.displayMetrics.density).toInt()
+                setOnCheckedChangeListener { _, checked ->
+                    if (renderingDisplaySettings) return@setOnCheckedChangeListener
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        val current = dataStore.settings.first().disabledAsciiArts.toMutableSet()
+                        // Switch on = art shown = key absent from the disabled set.
+                        if (checked) current.remove(art.key) else current.add(art.key)
+                        dataStore.updateDisabledAsciiArts(current.toList())
+                    }
+                }
+            }
+            asciiSwitches[art.key] = switch
+            container.addView(switch)
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                dataStore.settings.collect { settings ->
+                    renderingDisplaySettings = true
+                    binding.switchUsageIconsGrayscale.isChecked = settings.usageIconsGrayscale
+                    val disabled = settings.disabledAsciiArts.toSet()
+                    asciiSwitches.forEach { (key, switch) ->
+                        switch.isChecked = key !in disabled
+                    }
+                    renderingDisplaySettings = false
                 }
             }
         }

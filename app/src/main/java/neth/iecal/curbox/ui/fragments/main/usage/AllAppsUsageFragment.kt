@@ -29,8 +29,10 @@ import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
 import androidx.core.util.Pair
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
@@ -38,7 +40,10 @@ import com.google.android.material.color.MaterialColors
 import com.google.android.material.datepicker.MaterialDatePicker
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import neth.iecal.curbox.utils.ViewUtils
@@ -67,10 +72,17 @@ class AllAppsUsageFragment : Fragment() {
 
         companion object {
             const val FRAGMENT_ID = "all_app_usage"
+
+            // Shared, immutable: a fully desaturated color filter for graying app icons.
+            private val GRAYSCALE_FILTER = android.graphics.ColorMatrixColorFilter(
+                android.graphics.ColorMatrix().apply { setSaturation(0f) }
+            )
         }
 
         private var _binding: FragmentAllAppUsageBinding? = null
         private val binding get() = _binding!!
+
+        private var usageIconsGrayscale = false
 
         private lateinit var viewModel: AllAppsUsageViewModel
         private lateinit var usageStatsHelper: UsageStatsHelper
@@ -139,25 +151,11 @@ class AllAppsUsageFragment : Fragment() {
             viewModel = ViewModelProvider(this)[AllAppsUsageViewModel::class.java]
             usageStatsHelper = UsageStatsHelper(requireContext().applicationContext)
 
-            val asciiArts = listOf(
-                R.string.ascii_brain,
-                R.string.ascii_aim,
-                R.string.ascii_star1,
-                R.string.ascii_star2,
-                R.string.ascii_kitty,
-                R.string.ascii_star3,
-                R.string.ascii_star4,
-                R.string.ascii_star5,
-                R.string.ascii_coolstars,
-                R.string.ascii_coolflower,
-                R.string.ascii_chillguy,
-                R.string.ascii_god,
-                R.string.ascii_jellyfish,
-                R.string.ascii_lotus,
-                R.string.ascii_sharks
-
-            )
-            binding.asciiArt.text = getString(asciiArts.random())
+            val disabledAscii = runBlocking {
+                DataStoreManager(requireContext()).settings.first().disabledAsciiArts
+            }
+            val asciiArts = neth.iecal.curbox.hardcoded.AsciiArts.enabled(disabledAscii)
+            binding.asciiArt.text = getString(asciiArts.random().artRes)
             binding.asciiArt.foreground = createAsciiFade()
 
             if (!PermissionUtils.hasAllRequiredPermissions(requireContext())) {
@@ -172,6 +170,17 @@ class AllAppsUsageFragment : Fragment() {
             binding.appUsageRecyclerView.layoutManager = LinearLayoutManager(requireContext())
             binding.appUsageRecyclerView.adapter = adapter
 
+            viewLifecycleOwner.lifecycleScope.launch {
+                viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                    DataStoreManager(requireContext()).settings
+                        .map { it.usageIconsGrayscale }
+                        .distinctUntilChanged()
+                        .collect { grayscale ->
+                            usageIconsGrayscale = grayscale
+                            adapter.notifyDataSetChanged()
+                        }
+                }
+            }
 
             observeViewModel(adapter)
 
@@ -570,6 +579,8 @@ class AllAppsUsageFragment : Fragment() {
                         R.drawable.baseline_warning_24
                     )
                 )
+                // Filter, not a mutated drawable, so the shared icon cache stays full color.
+                binding.appIcon.colorFilter = if (usageIconsGrayscale) GRAYSCALE_FILTER else null
                 binding.root.setOnClickListener {
                     val destination = if (stats.packageName == neth.iecal.curbox.data.sync.SYNCED_WEB_PACKAGE) {
                         // There's no single app behind synced browsing, so per app

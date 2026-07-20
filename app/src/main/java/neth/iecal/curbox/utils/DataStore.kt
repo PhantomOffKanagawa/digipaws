@@ -117,6 +117,14 @@ class DataStoreManager(private val context: Context) {
         settingsDataStore.updateData { it.copy(hideServiceNotification = hide) }
     }
 
+    suspend fun updateUsageIconsGrayscale(enabled: Boolean) {
+        settingsDataStore.updateData { it.copy(usageIconsGrayscale = enabled) }
+    }
+
+    suspend fun updateDisabledAsciiArts(disabledKeys: List<String>) {
+        settingsDataStore.updateData { it.copy(disabledAsciiArts = disabledKeys) }
+    }
+
     suspend fun updateAppUsageTrackingEnabled(isEnabled: Boolean) {
         updateGated(GatedSettingsField.APP_USAGE_TRACKING) { isEnabled }
     }

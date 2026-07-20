@@ -30,5 +30,11 @@ data class Settings(
      * minimal-importance channel so it stays out of the status bar. The notification itself
      * cannot be removed while the service runs (Android requires it).
      */
-    val hideServiceNotification: Boolean = false
+    val hideServiceNotification: Boolean = false,
+
+    /** When true, app icons on the usage page render in grayscale. */
+    val usageIconsGrayscale: Boolean = false,
+
+    /** Stable keys (see hardcoded/AsciiArts) of the ASCII arts the user has hidden. */
+    val disabledAsciiArts: List<String> = listOf()
 )
