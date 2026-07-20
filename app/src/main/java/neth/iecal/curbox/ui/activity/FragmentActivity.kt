@@ -273,6 +273,14 @@ class FragmentActivity : AppCompatActivity() {
     }
 
     private fun switchTab(itemId: Int) {
+        // Close any overlay fragment (e.g. Focus Stats) sitting on top of the tabs,
+        // so switching tabs never leaves a stale detail screen open.
+        if (supportFragmentManager.backStackEntryCount > 0) {
+            supportFragmentManager.popBackStack(
+                null, androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE
+            )
+        }
+
         val container = findViewById<android.view.View>(R.id.fragment_holder)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

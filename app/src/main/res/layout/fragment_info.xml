@@ -396,6 +396,22 @@
                     android:text="@string/usage_tracking_disabled_warning"
                     android:textColor="?attr/colorError"
                     style="@style/TextAppearance.Material3.BodySmall" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switch_hide_service_notification"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:minHeight="56dp"
+                    android:text="@string/hide_service_notification" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/hide_service_notification_description"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    style="@style/TextAppearance.Material3.BodySmall" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

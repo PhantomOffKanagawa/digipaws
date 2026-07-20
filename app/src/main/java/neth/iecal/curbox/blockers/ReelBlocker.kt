@@ -1,12 +1,14 @@
 package neth.iecal.curbox.blockers
 
 import android.annotation.SuppressLint
+import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Context.RECEIVER_EXPORTED
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Rect
+import androidx.core.app.NotificationCompat
 import android.os.Build
 import android.os.SystemClock
 import android.util.DisplayMetrics
@@ -41,6 +43,14 @@ class ReelBlocker : BaseBlocker() {
         const val INTENT_ACTION_REFRESH_REEL_BLOCKER_COOLDOWN =
             "neth.iecal.curbox.refresh.reelblocker.cooldown"
 
+        /**
+         * Ends a reel view's temporary access (cooldown) early and blocks it again now.
+         * Sent by the "Block again now" action on the cooldown notification.
+         * result_id : String -> viewId to re-block
+         */
+        const val INTENT_ACTION_RESUME_BLOCK = "neth.iecal.curbox.reelblocker.resumeblock"
+
+        private const val NOTIFICATION_ID = 1003
 
         private const val TARGET_EVENTS_MASK = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or
                 AccessibilityEvent.TYPE_VIEW_SCROLLED or
@@ -139,15 +149,40 @@ class ReelBlocker : BaseBlocker() {
 
 
     fun applyCooldown(viewId: String, endTime: Long) {
-        notificationManager.startTimer(totalMillis = endTime - SystemClock.uptimeMillis(), timerId = viewId, title = service.getString(R.string.notification_remaining_usage_reels_lockdown))
+        notificationManager.startTimer(
+            totalMillis = endTime - SystemClock.uptimeMillis(),
+            timerId = viewId,
+            title = service.getString(R.string.notification_remaining_usage_reels_lockdown),
+            action = buildResumeBlockAction(viewId)
+        )
         cooldownViewIdsList[viewId] = endTime
+    }
+
+    // Notification button that ends a reel view's temporary access early and blocks it again now.
+    private fun buildResumeBlockAction(viewId: String): NotificationCompat.Action {
+        val intent = Intent(INTENT_ACTION_RESUME_BLOCK).apply {
+            setPackage(service.packageName)
+            putExtra("result_id", viewId)
+        }
+        val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        val pendingIntent = PendingIntent.getBroadcast(service, viewId.hashCode(), intent, flags)
+        return NotificationCompat.Action(
+            0,
+            service.getString(R.string.notification_action_resume_block),
+            pendingIntent
+        )
+    }
+
+    private fun handleResumeBlock(viewId: String) {
+        cooldownViewIdsList.remove(viewId)
+        notificationManager.stopTimer()
     }
 
 
     fun setupBlocker(service: BaseBlockingService) {
         this.service = service
 
-        notificationManager = TimerNotification(service)
+        notificationManager = TimerNotification(service, NOTIFICATION_ID)
         var displayMetrics: DisplayMetrics = service.resources.displayMetrics
         screenHeight = displayMetrics.heightPixels
         screenWidth = displayMetrics.widthPixels
@@ -204,6 +239,7 @@ class ReelBlocker : BaseBlocker() {
         val filter = IntentFilter().apply {
             addAction(INTENT_ACTION_REFRESH_REEL_BLOCKER)
             addAction(INTENT_ACTION_REFRESH_REEL_BLOCKER_COOLDOWN)
+            addAction(INTENT_ACTION_RESUME_BLOCK)
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             service.registerReceiver(refreshReceiver, filter, RECEIVER_EXPORTED)
@@ -231,6 +267,10 @@ class ReelBlocker : BaseBlocker() {
                         intent.getStringExtra("result_id") ?: "xxxxxxxxxxxxxx",
                         SystemClock.uptimeMillis() + interval
                     )
+                }
+
+                INTENT_ACTION_RESUME_BLOCK -> {
+                    handleResumeBlock(intent.getStringExtra("result_id") ?: return)
                 }
             }
         }

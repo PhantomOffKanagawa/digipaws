@@ -113,6 +113,10 @@ class DataStoreManager(private val context: Context) {
         settingsDataStore.updateData { it.copy(usageTrackerIgnoredApps = newApps) }
     }
 
+    suspend fun updateHideServiceNotification(hide: Boolean) {
+        settingsDataStore.updateData { it.copy(hideServiceNotification = hide) }
+    }
+
     suspend fun updateAppUsageTrackingEnabled(isEnabled: Boolean) {
         updateGated(GatedSettingsField.APP_USAGE_TRACKING) { isEnabled }
     }

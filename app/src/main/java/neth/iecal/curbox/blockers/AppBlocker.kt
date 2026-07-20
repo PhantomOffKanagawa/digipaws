@@ -1,6 +1,7 @@
 package neth.iecal.curbox.blockers
 
 import android.annotation.SuppressLint
+import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Context.RECEIVER_EXPORTED
@@ -12,6 +13,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
+import androidx.core.app.NotificationCompat
 import androidx.core.content.edit
 import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
@@ -51,6 +53,16 @@ class AppBlocker() : BaseBlocker() {
          * result_id : String -> ID of the app group to be put into cooldown
          */
         const val INTENT_ACTION_REFRESH_APP_BLOCKER_COOLDOWN = "neth.iecal.curbox.refresh.appblocker.cooldown"
+
+        /**
+         * Ends a group's temporary access (cooldown) early and blocks it again now.
+         * Sent by the "Block again now" action on the cooldown notification.
+         * result_id : String -> ID of the app group to re-block
+         */
+        const val INTENT_ACTION_RESUME_BLOCK = "neth.iecal.curbox.appblocker.resumeblock"
+
+        private const val USAGE_NOTIFICATION_ID = 1002
+        private const val COOLDOWN_NOTIFICATION_ID = 1005
         private const val TARGET_EVENTS_MASK = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
     }
 
@@ -110,7 +122,10 @@ class AppBlocker() : BaseBlocker() {
 
     private val activeRunnables = ConcurrentHashMap<String, Runnable>()
 
-    private lateinit var notificationManager: TimerNotification
+    // Two separate notifications so a running "remaining usage" countdown and a
+    // "temporary access" (cooldown) countdown never overwrite each other on screen.
+    private lateinit var usageNotification: TimerNotification
+    private lateinit var cooldownNotification: TimerNotification
 
     private val ignoredApps = mutableListOf<String>("com.android.systemui")
 
@@ -131,7 +146,7 @@ class AppBlocker() : BaseBlocker() {
 
         val now = System.currentTimeMillis()
         onOpenAppsList[packageName]?.firstOrNull { !isGroupInCooldown(it.groupId, now) }?.let { entry ->
-            notificationManager.stopTimer()
+            usageNotification.stopTimer()
             showWarningScreen(packageName, entry.groupId, entry.warningConfig)
             return
         }
@@ -144,7 +159,7 @@ class AppBlocker() : BaseBlocker() {
                 val endAllowedRealTime = getEndTimeInRealTimeMillis(entry.config)
                 if (endAllowedRealTime == null) {
                     Log.d("AppBlocker", "Blocking $packageName (Timed - out of schedule)")
-                    notificationManager.stopTimer()
+                    usageNotification.stopTimer()
                     showWarningScreen(packageName, entry.groupId, entry.warningConfig)
                     return
                 }
@@ -170,7 +185,7 @@ class AppBlocker() : BaseBlocker() {
                 val remainingUsage = usageLimitMillis - currentUsage
 
                 if (remainingUsage <= 0) {
-                    notificationManager.stopTimer()
+                    usageNotification.stopTimer()
                     showWarningScreen(packageName, entry.groupId, entry.warningConfig)
                     return
                 }
@@ -178,7 +193,7 @@ class AppBlocker() : BaseBlocker() {
             }
 
             if (minRemaining != Long.MAX_VALUE) {
-                notificationManager.startTimer(
+                usageNotification.startTimer(
                     totalMillis = minRemaining,
                     timerId = packageName,
                     title = service.getString(R.string.notification_title_remaining_usage)
@@ -200,6 +215,7 @@ class AppBlocker() : BaseBlocker() {
         val filter = IntentFilter().apply {
             addAction(INTENT_ACTION_REFRESH_APP_BLOCKER)
             addAction(INTENT_ACTION_REFRESH_APP_BLOCKER_COOLDOWN)
+            addAction(INTENT_ACTION_RESUME_BLOCK)
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             service.registerReceiver(refreshReceiver, filter, RECEIVER_EXPORTED)
@@ -210,7 +226,8 @@ class AppBlocker() : BaseBlocker() {
 
     fun onDestroy() {
         service.unregisterReceiver(refreshReceiver)
-        notificationManager.release()
+        usageNotification.release()
+        cooldownNotification.release()
         handler.removeCallbacksAndMessages(null)
         activeRunnables.clear()
         settingsJob?.cancel()
@@ -218,7 +235,8 @@ class AppBlocker() : BaseBlocker() {
 
     fun setupAppBlocker(service: BaseBlockingService) {
         this.service = service
-        notificationManager = TimerNotification(service)
+        usageNotification = TimerNotification(service, USAGE_NOTIFICATION_ID)
+        cooldownNotification = TimerNotification(service, COOLDOWN_NOTIFICATION_ID)
         prefs = service.getSharedPreferences("app_blocker_prefs", Context.MODE_PRIVATE)
         usageStats = UsageStatsHelper(service)
         loadPersistedData()
@@ -374,15 +392,50 @@ class AppBlocker() : BaseBlocker() {
         val now = System.currentTimeMillis()
         val next = cooldownGroupsList.filterValues { it > now }.minByOrNull { it.value }
         if (next == null) {
-            notificationManager.stopTimer()
+            cooldownNotification.stopTimer()
             return
         }
-        notificationManager.startTimer(
+        cooldownNotification.startTimer(
             totalMillis = next.value - now,
             timerId = "app_cooldown:${next.key}:${next.value}",
             title = service.getString(R.string.notification_remaining_usage_lockdown),
+            action = buildResumeBlockAction(next.key),
             onFinishCallback = { showNextCooldownNotification() }
         )
+    }
+
+    // Notification button that ends a group's temporary access early and blocks it again now.
+    private fun buildResumeBlockAction(groupId: String): NotificationCompat.Action {
+        val intent = Intent(INTENT_ACTION_RESUME_BLOCK).apply {
+            setPackage(service.packageName)
+            putExtra("result_id", groupId)
+        }
+        val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        val pendingIntent = PendingIntent.getBroadcast(service, groupId.hashCode(), intent, flags)
+        return NotificationCompat.Action(
+            0,
+            service.getString(R.string.notification_action_resume_block),
+            pendingIntent
+        )
+    }
+
+    private fun handleResumeBlockBroadcast(intent: Intent) {
+        val groupId = intent.getStringExtra("result_id") ?: return
+        removeCooldownFrom(groupId)
+        showNextCooldownNotification()
+        // Re-check the current app so the block takes effect immediately.
+        handler.post {
+            try {
+                val currentPackage = service.rootInActiveWindow?.packageName?.toString() ?: return@post
+                lastPackage = ""
+                val event = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
+                event.packageName = currentPackage
+                doAppBlockerCheck(event)
+                event.recycle()
+            } catch (e: Exception) {
+                Log.e("AppBlocker", "Error re-blocking after resume", e)
+            }
+        }
     }
 
     private fun getEndTimeInRealTimeMillis(config: AppTimeConfig): Long? {
@@ -464,7 +517,7 @@ class AppBlocker() : BaseBlocker() {
             appBlockerWarningScrnConfgs[groupId] = warningConfig
 
             Log.d("AppBlocker", "Showing warning screen for $packageName")
-            notificationManager.stopTimer()
+            usageNotification.stopTimer()
             service.pressHome()
             lastPackage = ""
 
@@ -502,6 +555,7 @@ class AppBlocker() : BaseBlocker() {
             when (intent.action) {
                 INTENT_ACTION_REFRESH_APP_BLOCKER -> setupAppBlocker(service)
                 INTENT_ACTION_REFRESH_APP_BLOCKER_COOLDOWN -> handlePutCooldownIntentBroadcast(intent)
+                INTENT_ACTION_RESUME_BLOCK -> handleResumeBlockBroadcast(intent)
             }
         }
     }

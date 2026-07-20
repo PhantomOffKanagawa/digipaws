@@ -56,6 +56,7 @@ class TimerNotification(
         isCountdown: Boolean = true,
         title: String = "Timer",
         timerId: String = "focusMode",
+        action: NotificationCompat.Action? = null,
         onTickCallback: ((Long) -> Unit)? = null,
         onFinishCallback: (() -> Unit)? = null,
     ) {
@@ -71,8 +72,11 @@ class TimerNotification(
         currentTimerId = timerId
         _timerState.value = TimerState.RUNNING
 
-        // Setup the cached notification UI title
+        // Setup the cached notification UI title. The builder is reused across ticks,
+        // so clear any action from a previous timer before adding this one's.
         notificationBuilder.setContentTitle(title)
+        notificationBuilder.clearActions()
+        action?.let { notificationBuilder.addAction(it) }
 
         timerJob = scope.launch {
             try {

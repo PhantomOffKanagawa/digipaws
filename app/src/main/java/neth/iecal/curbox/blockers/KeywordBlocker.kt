@@ -1,6 +1,7 @@
 package neth.iecal.curbox.blockers
 
 import android.annotation.SuppressLint
+import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Context.RECEIVER_EXPORTED
@@ -14,6 +15,7 @@ import android.util.Log
 import android.util.LruCache
 import android.view.accessibility.AccessibilityEvent
 import android.widget.Toast
+import androidx.core.app.NotificationCompat
 import androidx.core.content.edit
 import androidx.room.InvalidationTracker
 import com.google.gson.Gson
@@ -47,6 +49,14 @@ class KeywordBlocker : BaseBlocker() {
     companion object {
         const val INTENT_ACTION_REFRESH_CONFIG = "neth.iecal.curbox.refresh.keywordblocker.config"
         const val INTENT_ACTION_REFRESH_KEYWORD_BLOCKER_COOLDOWN = "neth.iecal.curbox.refresh.keywordblocker.cooldown"
+
+        /**
+         * Ends a group's temporary access (cooldown) early and blocks it again now.
+         * Sent by the "Block again now" action on the cooldown notification.
+         * result_id : String -> ID of the keyword group to re-block
+         */
+        const val INTENT_ACTION_RESUME_BLOCK = "neth.iecal.curbox.keywordblocker.resumeblock"
+
         private const val TARGET_EVENTS_MASK =
             AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED or AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
         private const val BLOCK_SUPPRESSION_MS = 5_000L
@@ -477,6 +487,7 @@ class KeywordBlocker : BaseBlocker() {
             totalMillis = remaining,
             timerId = "keyword_cooldown:$groupId:$cooldownEnd",
             title = service.getString(R.string.notification_remaining_usage_lockdown),
+            action = buildResumeBlockAction(groupId),
             onFinishCallback = {
                 if (cooldownGroupsList[groupId] == cooldownEnd) {
                     cooldownGroupsList.remove(groupId)
@@ -496,11 +507,41 @@ class KeywordBlocker : BaseBlocker() {
         )
     }
 
+    // Notification button that ends a group's temporary access early and blocks it again now.
+    private fun buildResumeBlockAction(groupId: String): NotificationCompat.Action {
+        val intent = Intent(INTENT_ACTION_RESUME_BLOCK).apply {
+            setPackage(service.packageName)
+            putExtra("result_id", groupId)
+        }
+        val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        val pendingIntent = PendingIntent.getBroadcast(service, groupId.hashCode(), intent, flags)
+        return NotificationCompat.Action(
+            0,
+            service.getString(R.string.notification_action_resume_block),
+            pendingIntent
+        )
+    }
+
+    private fun handleResumeBlock(intent: Intent) {
+        val groupId = intent.getStringExtra("result_id") ?: return
+        removeCooldownFrom(groupId)
+        // Re-check the most recent website visit so the block takes effect immediately.
+        val date = TimeTools.getCurrentDate()
+        CoroutineScope(Dispatchers.IO).launch {
+            val latest = AppDatabase.getInstance(service).websiteStatsDao()
+                .getStatsForDate(date).maxByOrNull { it.lastVisited }
+            if (latest != null && latest.lastVisited > (System.currentTimeMillis() - 5000)) {
+                evaluateAndBlock(latest)
+            }
+        }
+    }
+
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     fun setupReceivers() {
         val filter = IntentFilter().apply {
             addAction(INTENT_ACTION_REFRESH_CONFIG)
             addAction(INTENT_ACTION_REFRESH_KEYWORD_BLOCKER_COOLDOWN)
+            addAction(INTENT_ACTION_RESUME_BLOCK)
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             service.registerReceiver(refreshReceiver, filter, RECEIVER_EXPORTED)
@@ -524,6 +565,7 @@ class KeywordBlocker : BaseBlocker() {
             when (intent?.action) {
                 INTENT_ACTION_REFRESH_CONFIG -> setupBlocker(service)
                 INTENT_ACTION_REFRESH_KEYWORD_BLOCKER_COOLDOWN -> handleCooldownIntent(intent)
+                INTENT_ACTION_RESUME_BLOCK -> handleResumeBlock(intent)
             }
         }
     }

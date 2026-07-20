@@ -58,13 +58,16 @@
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginVertical="24dp">
+                    android:layout_marginVertical="24dp"
+                    app:prefixText="@string/prefix_rather_spend_time">
 
                     <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/et_room_for"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
-                        android:lines="2"
-                        android:text="@string/label_rather_spend_time" />
+                        android:hint="@string/hint_rather_spend_time"
+                        android:inputType="textCapSentences|textMultiLine"
+                        android:lines="2" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.button.MaterialButton

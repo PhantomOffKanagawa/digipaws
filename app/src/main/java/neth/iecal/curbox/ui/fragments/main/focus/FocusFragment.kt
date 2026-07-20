@@ -163,6 +163,12 @@ class FocusFragment : Fragment() {
             }
         }
 
+        // Tap the big minutes number to type an exact duration instead of scrolling the ruler.
+        binding.tvMinutes.setOnClickListener {
+            if (viewModel.currentRunningFocus.value.first != null) return@setOnClickListener
+            showDurationInputDialog()
+        }
+
         binding.btnHelp.setOnClickListener {
             ViewUtils.showHelpPopup(it, "Focus mode helps you stay away from distractions for a set period of time.", "https://curbox.app/docs/focus/focus-mode/")
         }
@@ -343,6 +349,30 @@ class FocusFragment : Fragment() {
         nfcTapDialog = null
     }
 
+
+    private fun showDurationInputDialog() {
+        val ctx = context ?: return
+        val input = com.google.android.material.textfield.TextInputEditText(ctx).apply {
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+            setText(viewModel.selectedMins.toString())
+            setSelectAllOnFocus(true)
+        }
+        val container = com.google.android.material.textfield.TextInputLayout(ctx).apply {
+            hint = getString(R.string.common_mins)
+            val pad = (24 * resources.displayMetrics.density).toInt()
+            setPadding(pad, 0, pad, 0)
+            addView(input)
+        }
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(ctx)
+            .setTitle(R.string.focus_set_duration_title)
+            .setView(container)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                val mins = input.text?.toString()?.toIntOrNull() ?: return@setPositiveButton
+                scrollToMinute(mins.coerceIn(1, 240), smooth = false)
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
 
     private fun updateTime(pos:Int){
         val b = _binding ?: return

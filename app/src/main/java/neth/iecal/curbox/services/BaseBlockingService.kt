@@ -13,7 +13,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import neth.iecal.curbox.R
 import neth.iecal.curbox.utils.DataStoreManager
@@ -79,37 +81,72 @@ open class BaseBlockingService : AccessibilityService() {
         }
     }
 
-    private fun startForegroundService() {
-        val channelId = "blocking_service_channel"
-        val channelName = getString(R.string.blocking_service_channel_name)
+    private val serviceNotificationId by lazy { this.javaClass.simpleName.hashCode() }
 
+    private fun startForegroundService() {
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
 
-        val channel = NotificationChannel(
-            channelId,
-            channelName,
-            NotificationManager.IMPORTANCE_LOW
-        ).apply {
-            description = getString(R.string.blocking_service_channel_description)
-        }
-        notificationManager.createNotificationChannel(channel)
+        // Normal (status bar) channel.
+        notificationManager.createNotificationChannel(
+            NotificationChannel(
+                SERVICE_CHANNEL_ID,
+                getString(R.string.blocking_service_channel_name),
+                NotificationManager.IMPORTANCE_LOW
+            ).apply { description = getString(R.string.blocking_service_channel_description) }
+        )
+        // Minimal channel used when the user chooses to hide the notification. IMPORTANCE_MIN
+        // keeps it out of the status bar; the notification cannot be removed entirely because
+        // Android requires a foreground service to show one.
+        notificationManager.createNotificationChannel(
+            NotificationChannel(
+                SERVICE_CHANNEL_ID_MIN,
+                getString(R.string.blocking_service_channel_name),
+                NotificationManager.IMPORTANCE_MIN
+            ).apply { description = getString(R.string.blocking_service_channel_description) }
+        )
 
+        // Start on the normal channel immediately so foreground is entered without waiting on
+        // an async settings read, then move to the minimal channel if the user asked to hide it.
+        val notification = buildServiceNotification(hide = false)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(serviceNotificationId, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        } else {
+            startForeground(serviceNotificationId, notification)
+        }
+
+        protectionScope.launch { observeServiceNotificationVisibility() }
+    }
+
+    private fun buildServiceNotification(hide: Boolean): android.app.Notification {
         val className = this::class.simpleName
-        val notification = NotificationCompat.Builder(this, channelId)
+        return NotificationCompat.Builder(
+            this,
+            if (hide) SERVICE_CHANNEL_ID_MIN else SERVICE_CHANNEL_ID
+        )
             .setContentTitle(getString(R.string.blocking_service_notification_title, className))
             .setContentText(getString(R.string.blocking_service_notification_text))
             .setSmallIcon(R.drawable.icon)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setPriority(if (hide) NotificationCompat.PRIORITY_MIN else NotificationCompat.PRIORITY_HIGH)
             .setOngoing(true)
             .build()
+    }
 
-        val notificationId = this.javaClass.simpleName.hashCode()
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(notificationId, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
-        } else {
-            startForeground(notificationId, notification)
+    private suspend fun observeServiceNotificationVisibility() {
+        try {
+            val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+            dataStoreManager.settings
+                .map { it.hideServiceNotification }
+                .distinctUntilChanged()
+                .collect { hide ->
+                    notificationManager.notify(serviceNotificationId, buildServiceNotification(hide))
+                }
+        } catch (_: Exception) {
         }
+    }
+
+    companion object {
+        private const val SERVICE_CHANNEL_ID = "blocking_service_channel"
+        private const val SERVICE_CHANNEL_ID_MIN = "blocking_service_channel_min"
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
