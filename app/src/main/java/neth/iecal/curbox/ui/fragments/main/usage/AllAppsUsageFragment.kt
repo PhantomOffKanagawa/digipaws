@@ -156,7 +156,11 @@ class AllAppsUsageFragment : Fragment() {
             }
             val asciiArts = neth.iecal.curbox.hardcoded.AsciiArts.enabled(disabledAscii)
             binding.asciiArt.text = getString(asciiArts.random().artRes)
-            binding.asciiArt.foreground = createAsciiFade()
+            // Recompute once measured: taller arts get a longer trailing fade so they dissolve
+            // into the app list below instead of ending in a hard line at the weekday bar.
+            binding.asciiArt.post {
+                _binding?.asciiArt?.let { it.foreground = createAsciiFade(it.height) }
+            }
 
             if (!PermissionUtils.hasAllRequiredPermissions(requireContext())) {
                 val intent = Intent(requireContext(), FragmentActivity::class.java).apply {
@@ -514,13 +518,16 @@ class AllAppsUsageFragment : Fragment() {
         // pieces (like ascii_god) melt into the surface instead of looking cut off.
         // The overlay fades to the surface color, which is the same color drawn
         // behind the art, so it stays clean even through the view's 0.5 alpha.
-        private fun createAsciiFade(): Drawable {
+        private fun createAsciiFade(artHeight: Int = 0): Drawable {
             val surface = MaterialColors.getColor(
                 binding.root,
                 com.google.android.material.R.attr.colorSurface
             )
             val transparent = surface and 0x00FFFFFF
-            val fadeHeight = (48 * resources.displayMetrics.density).toInt()
+            val topFadeHeight = (48 * resources.displayMetrics.density).toInt()
+            // Fade out the lower ~60% of the art so a tall piece trails off gradually into the
+            // list below rather than cutting off sharply. Never shorter than the top fade.
+            val bottomFadeHeight = (artHeight * 0.6f).toInt().coerceAtLeast(topFadeHeight)
 
             val top = GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
@@ -533,9 +540,9 @@ class AllAppsUsageFragment : Fragment() {
 
             return LayerDrawable(arrayOf(top, bottom)).apply {
                 setLayerGravity(0, Gravity.TOP)
-                setLayerHeight(0, fadeHeight)
+                setLayerHeight(0, topFadeHeight)
                 setLayerGravity(1, Gravity.BOTTOM)
-                setLayerHeight(1, fadeHeight)
+                setLayerHeight(1, bottomFadeHeight)
             }
         }
 
