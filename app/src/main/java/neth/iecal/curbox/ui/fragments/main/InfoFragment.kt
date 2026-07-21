@@ -61,18 +61,12 @@ class InfoFragment : Fragment() {
                 dataStore.updateWebsiteUsageTrackingEnabled(checked)
             }
         }
-        binding.switchHideServiceNotification.setOnCheckedChangeListener { _, checked ->
-            if (!renderingTrackingSettings) viewLifecycleOwner.lifecycleScope.launch {
-                dataStore.updateHideServiceNotification(checked)
-            }
-        }
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 dataStore.settings.collect { settings ->
                     renderingTrackingSettings = true
                     binding.switchAppUsageTracking.isChecked = settings.isAppUsageTrackingEnabled
                     binding.switchWebsiteUsageTracking.isChecked = settings.isWebsiteUsageTrackingEnabled
-                    binding.switchHideServiceNotification.isChecked = settings.hideServiceNotification
                     renderingTrackingSettings = false
                 }
             }

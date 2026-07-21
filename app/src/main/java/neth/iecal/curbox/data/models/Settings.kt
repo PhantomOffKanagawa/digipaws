@@ -25,12 +25,6 @@ data class Settings(
     val antiUninstallConfig: AntiUninstallConfig = AntiUninstallConfig(),
     val serviceProtectionConfig: ServiceProtectionConfig = ServiceProtectionConfig(),
     val settingsChangeDelayConfig: SettingsChangeDelayConfig = SettingsChangeDelayConfig(),
-    /**
-     * When true the foreground "AppBlockerService is active" notification is posted on a
-     * minimal-importance channel so it stays out of the status bar. The notification itself
-     * cannot be removed while the service runs (Android requires it).
-     */
-    val hideServiceNotification: Boolean = false,
 
     /** When true, app icons render in grayscale everywhere they are shown. */
     val appIconsGrayscale: Boolean = false,

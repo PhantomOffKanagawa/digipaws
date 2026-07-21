@@ -13,9 +13,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import neth.iecal.curbox.R
 import neth.iecal.curbox.utils.DataStoreManager
@@ -83,15 +81,8 @@ open class BaseBlockingService : AccessibilityService() {
 
     private val serviceNotificationId by lazy { this.javaClass.simpleName.hashCode() }
 
-    @Volatile
-    private var isForegroundActive = false
-
     private fun startForegroundService() {
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-
-        // Remove the obsolete second channel an earlier build created, so upgraders don't see
-        // two "Blocking Service" entries in Android settings. Harmless if it never existed.
-        notificationManager.deleteNotificationChannel("blocking_service_channel_min")
 
         // Its own dedicated channel so the user can turn this one notification down or off in
         // Android settings without touching Curbox's other notifications (timers, warnings...).
@@ -103,53 +94,19 @@ open class BaseBlockingService : AccessibilityService() {
             ).apply { description = getString(R.string.blocking_service_channel_description) }
         )
 
-        showForeground()
-        protectionScope.launch { observeServiceNotificationVisibility() }
-    }
-
-    private fun buildServiceNotification(): android.app.Notification {
         val className = this::class.simpleName
-        return NotificationCompat.Builder(this, SERVICE_CHANNEL_ID)
+        val notification = NotificationCompat.Builder(this, SERVICE_CHANNEL_ID)
             .setContentTitle(getString(R.string.blocking_service_notification_title, className))
             .setContentText(getString(R.string.blocking_service_notification_text))
             .setSmallIcon(R.drawable.icon)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .build()
-    }
 
-    private fun showForeground() {
-        val notification = buildServiceNotification()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(serviceNotificationId, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         } else {
             startForeground(serviceNotificationId, notification)
-        }
-        isForegroundActive = true
-    }
-
-    /**
-     * Fully removes the "service is active" notification. This is an AccessibilityService, so the
-     * system keeps it running without a foreground notification; the tradeoff is the loss of the
-     * foreground-service keep-alive priority while hidden.
-     */
-    private fun hideForeground() {
-        androidx.core.app.ServiceCompat.stopForeground(
-            this, androidx.core.app.ServiceCompat.STOP_FOREGROUND_REMOVE
-        )
-        isForegroundActive = false
-    }
-
-    private suspend fun observeServiceNotificationVisibility() {
-        try {
-            dataStoreManager.settings
-                .map { it.hideServiceNotification }
-                .distinctUntilChanged()
-                .collect { hide ->
-                    if (hide && isForegroundActive) hideForeground()
-                    else if (!hide && !isForegroundActive) showForeground()
-                }
-        } catch (_: Exception) {
         }
     }
 

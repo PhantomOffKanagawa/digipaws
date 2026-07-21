@@ -1598,8 +1598,6 @@
     <string name="ascii_label_jellyfish">Jellyfish</string>
     <string name="ascii_label_lotus">Lotus</string>
     <string name="ascii_label_sharks">Sharks</string>
-    <string name="hide_service_notification">Hide the running notification</string>
-    <string name="hide_service_notification_description">I take down the "service is active" notification. I keep working the same way. You can also turn just this notification off in your phone settings, under the "Blocking Service" group.</string>
     <string name="usage_tracking_settings_description">Choose which usage data the accessibility service saves on this device.</string>
     <string name="app_usage_tracking">App Usage Tracking</string>
     <string name="website_usage_tracking">Website Usage Tracking</string>
