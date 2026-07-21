@@ -341,12 +341,13 @@ class WarningActivity : AppCompatActivity() {
             if (mode == Constants.WARNING_SCREEN_MODE_APP_BLOCKER) {
                 intent.getStringExtra("result_id")
                     ?.let { it1 ->
-                        val finalTime = if (warningScreenConfig.isOnOpenConfig) {
-                            1440
-                        } else if ((warningScreenConfig.isQrUnlockRequirementEnabled || warningScreenConfig.isNfcUnlockRequirementEnabled) && scannedValidDuration != -1L) {
-                            (scannedValidDuration / 60000).toInt()
-                        } else {
-                            binding.minsPicker.getValue()
+                        val hasUnlockChallenge = warningScreenConfig.isQrUnlockRequirementEnabled ||
+                            warningScreenConfig.isNfcUnlockRequirementEnabled
+                        val finalTime = when {
+                            hasUnlockChallenge && scannedValidDuration != -1L -> (scannedValidDuration / 60000).toInt()
+                            hasUnlockChallenge -> binding.minsPicker.getValue()
+                            warningScreenConfig.isOnOpenConfig -> 1440
+                            else -> binding.minsPicker.getValue()
                         }
                         sendRefreshRequest(
                             it1,
