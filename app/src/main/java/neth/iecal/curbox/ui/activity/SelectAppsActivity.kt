@@ -243,16 +243,16 @@ class SelectAppsActivity : AppCompatActivity() {
                 return false
             }
 
-            @SuppressLint("NotifyDataSetChanged")
             override fun onQueryTextChange(newText: String?): Boolean {
                 val query = newText?.trim() ?: ""
-                filteredList.clear()
-                filteredList.addAll(
-                    appItemList.filter {
-                        it.displayName.contains(query, ignoreCase = true)
-                    }
-                )
-                binding.appList.adapter?.notifyDataSetChanged()
+                // Filter off the master list and push through updateData so the adapter's list is
+                // the single source of truth. Mutating a captured list broke once anything else
+                // (e.g. select-by-category) swapped the adapter's list for a new reference.
+                val filtered = appItemList.filter {
+                    it.displayName.contains(query, ignoreCase = true)
+                }
+                (binding.appList.adapter as? ApplicationAdapter)
+                    ?.updateData(sortSelectedItemsToTop(filtered))
                 return true
             }
         })
