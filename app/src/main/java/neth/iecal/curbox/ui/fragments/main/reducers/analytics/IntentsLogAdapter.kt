@@ -32,6 +32,7 @@ class IntentsLogAdapter(private val onDelete: (Int) -> Unit) : ListAdapter<Inten
                 val appInfo = pm.getApplicationInfo(item.packageName, 0)
                 appName.text = pm.getApplicationLabel(appInfo)
                 appIcon.setImageDrawable(pm.getApplicationIcon(appInfo))
+                neth.iecal.curbox.utils.IconGrayscale.apply(appIcon)
             } catch (e: PackageManager.NameNotFoundException) {
                 appName.text = item.packageName
             }

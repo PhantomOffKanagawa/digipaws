@@ -72,17 +72,10 @@ class AllAppsUsageFragment : Fragment() {
 
         companion object {
             const val FRAGMENT_ID = "all_app_usage"
-
-            // Shared, immutable: a fully desaturated color filter for graying app icons.
-            private val GRAYSCALE_FILTER = android.graphics.ColorMatrixColorFilter(
-                android.graphics.ColorMatrix().apply { setSaturation(0f) }
-            )
         }
 
         private var _binding: FragmentAllAppUsageBinding? = null
         private val binding get() = _binding!!
-
-        private var usageIconsGrayscale = false
 
         private lateinit var viewModel: AllAppsUsageViewModel
         private lateinit var usageStatsHelper: UsageStatsHelper
@@ -174,15 +167,14 @@ class AllAppsUsageFragment : Fragment() {
             binding.appUsageRecyclerView.layoutManager = LinearLayoutManager(requireContext())
             binding.appUsageRecyclerView.adapter = adapter
 
+            // IconGrayscale.enabled is kept fresh app wide; re-bind rows when the toggle flips
+            // so the visible list updates live without leaving the page.
             viewLifecycleOwner.lifecycleScope.launch {
                 viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                     DataStoreManager(requireContext()).settings
-                        .map { it.usageIconsGrayscale }
+                        .map { it.appIconsGrayscale }
                         .distinctUntilChanged()
-                        .collect { grayscale ->
-                            usageIconsGrayscale = grayscale
-                            adapter.notifyDataSetChanged()
-                        }
+                        .collect { adapter.notifyDataSetChanged() }
                 }
             }
 
@@ -587,7 +579,7 @@ class AllAppsUsageFragment : Fragment() {
                     )
                 )
                 // Filter, not a mutated drawable, so the shared icon cache stays full color.
-                binding.appIcon.colorFilter = if (usageIconsGrayscale) GRAYSCALE_FILTER else null
+                neth.iecal.curbox.utils.IconGrayscale.apply(binding.appIcon)
                 binding.root.setOnClickListener {
                     val destination = if (stats.packageName == neth.iecal.curbox.data.sync.SYNCED_WEB_PACKAGE) {
                         // There's no single app behind synced browsing, so per app

@@ -84,7 +84,7 @@ class InfoFragment : Fragment() {
     private fun setupDisplaySettings() {
         binding.switchUsageIconsGrayscale.setOnCheckedChangeListener { _, checked ->
             if (!renderingDisplaySettings) viewLifecycleOwner.lifecycleScope.launch {
-                dataStore.updateUsageIconsGrayscale(checked)
+                dataStore.updateAppIconsGrayscale(checked)
             }
         }
 
@@ -96,7 +96,7 @@ class InfoFragment : Fragment() {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 dataStore.settings.collect { settings ->
                     renderingDisplaySettings = true
-                    binding.switchUsageIconsGrayscale.isChecked = settings.usageIconsGrayscale
+                    binding.switchUsageIconsGrayscale.isChecked = settings.appIconsGrayscale
                     renderingDisplaySettings = false
                 }
             }

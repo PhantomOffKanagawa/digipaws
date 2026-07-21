@@ -32,8 +32,8 @@ data class Settings(
      */
     val hideServiceNotification: Boolean = false,
 
-    /** When true, app icons on the usage page render in grayscale. */
-    val usageIconsGrayscale: Boolean = false,
+    /** When true, app icons render in grayscale everywhere they are shown. */
+    val appIconsGrayscale: Boolean = false,
 
     /** Stable keys (see hardcoded/AsciiArts) of the ASCII arts the user has hidden. */
     val disabledAsciiArts: List<String> = listOf()

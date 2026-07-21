@@ -272,15 +272,17 @@ class FragmentActivity : AppCompatActivity() {
         if (commitNow) transaction.commitNow() else transaction.commit()
     }
 
-    private fun switchTab(itemId: Int) {
-        // Close any overlay fragment (e.g. Focus Stats) sitting on top of the tabs,
-        // so switching tabs never leaves a stale detail screen open.
+    // Closes any overlay fragment (e.g. Focus Stats) sitting on top of the tabs so switching
+    // tabs never leaves a stale detail screen open.
+    private fun closeOverlayFragments() {
         if (supportFragmentManager.backStackEntryCount > 0) {
-            supportFragmentManager.popBackStack(
+            supportFragmentManager.popBackStackImmediate(
                 null, androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE
             )
         }
+    }
 
+    private fun switchTab(itemId: Int) {
         val container = findViewById<android.view.View>(R.id.fragment_holder)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -312,12 +314,15 @@ class FragmentActivity : AppCompatActivity() {
 
                 if (fraction >= 0.5f && !fragmentSwapped) {
                     fragmentSwapped = true
-                    // Remove the built-in fade animation here to avoid conflict with our manual alpha animation
+                    // Swap tabs while the screen is fully dimmed. Closing the overlay here (not
+                    // before the animation) keeps the fade covering it instead of an instant close.
+                    closeOverlayFragments()
                     showTab(itemId, commitNow = true)
                 }
             }
             animator.start()
         } else {
+            closeOverlayFragments()
             showTab(itemId)
         }
     }

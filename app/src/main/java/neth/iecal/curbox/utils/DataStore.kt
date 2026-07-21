@@ -117,8 +117,8 @@ class DataStoreManager(private val context: Context) {
         settingsDataStore.updateData { it.copy(hideServiceNotification = hide) }
     }
 
-    suspend fun updateUsageIconsGrayscale(enabled: Boolean) {
-        settingsDataStore.updateData { it.copy(usageIconsGrayscale = enabled) }
+    suspend fun updateAppIconsGrayscale(enabled: Boolean) {
+        settingsDataStore.updateData { it.copy(appIconsGrayscale = enabled) }
     }
 
     suspend fun updateDisabledAsciiArts(disabledKeys: List<String>) {

@@ -150,6 +150,7 @@ class FocusFragment : Fragment() {
     private fun setupClicks() {
         binding.btnGoToStats.setOnClickListener {
             parentFragmentManager.beginTransaction()
+                .setCustomAnimations(R.anim.fade_in, R.anim.fade_out, R.anim.fade_in, R.anim.fade_out)
                 .replace(R.id.fragment_holder, FocusStatsFragment())
                 .addToBackStack(null)
                 .commit()

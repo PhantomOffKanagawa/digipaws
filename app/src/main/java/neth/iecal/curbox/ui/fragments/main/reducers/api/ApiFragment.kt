@@ -57,6 +57,7 @@ class ApiFragment : Fragment() {
                     val info = pm.getApplicationInfo(pkg, 0)
                     label.text = pm.getApplicationLabel(info)
                     icon.setImageDrawable(pm.getApplicationIcon(info))
+                    neth.iecal.curbox.utils.IconGrayscale.apply(icon)
                 } catch (e: Exception) {
                     label.text = pkg
                     icon.setImageResource(R.drawable.logo)

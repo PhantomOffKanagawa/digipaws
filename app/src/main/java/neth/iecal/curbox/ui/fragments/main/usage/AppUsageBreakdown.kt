@@ -53,6 +53,7 @@ class AppUsageBreakdown(private val stat: AllAppsUsageFragment.Stat) : Fragment(
             val appInfo = requireContext().packageManager.getApplicationInfo(stat.packageName, 0)
             binding.appName.text = appInfo.loadLabel(requireContext().packageManager)
             binding.appIcon.setImageDrawable(appInfo.loadIcon(requireContext().packageManager))
+            neth.iecal.curbox.utils.IconGrayscale.apply(binding.appIcon)
         } catch (_: Exception) {}
         
         binding.screentime.text = TimeTools.formatTime(stat.totalTime, false)

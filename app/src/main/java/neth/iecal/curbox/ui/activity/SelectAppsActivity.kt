@@ -296,10 +296,12 @@ class SelectAppsActivity : AppCompatActivity() {
                     val icon = appItem.appInfo.loadIcon(packageManager)
                     withContext(Dispatchers.Main) {
                         holder.appIcon.setImageDrawable(icon)
+                        neth.iecal.curbox.utils.IconGrayscale.apply(holder.appIcon)
                     }
                 }
             } else {
                 holder.appIcon.setImageResource(android.R.drawable.sym_def_app_icon)
+                neth.iecal.curbox.utils.IconGrayscale.apply(holder.appIcon)
             }
 
             holder.checkbox.setOnCheckedChangeListener(null)
