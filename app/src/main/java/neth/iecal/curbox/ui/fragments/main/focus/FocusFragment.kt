@@ -24,6 +24,7 @@ import neth.iecal.curbox.utils.ViewUtils
 import neth.iecal.curbox.R
 import neth.iecal.curbox.databinding.FragmentFocusBinding
 import androidx.core.view.isNotEmpty
+import androidx.core.widget.doAfterTextChanged
 import kotlin.math.abs
 
 class FocusFragment : Fragment() {
@@ -37,6 +38,9 @@ class FocusFragment : Fragment() {
     private var itemWidthPx = 0
     private val snapHelper = LinearSnapHelper()
     private var nfcTapDialog: androidx.appcompat.app.AlertDialog? = null
+    // True while we set the minutes field in code, so its watcher ignores our own writes.
+    private var isSettingMinsText = false
+    private var prevSoftInputMode: Int? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -68,6 +72,7 @@ class FocusFragment : Fragment() {
                             b.btnStartConfig.text = if (groups.isEmpty()) getString(R.string.focus_create_group) else getString(R.string.focus_start)
                         }
 
+                        setMinutesEditable(!isRunning)
                         if (isRunning) {
                             b.rvRuler.stopScroll()
                             snapHelper.attachToRecyclerView(null)
@@ -78,7 +83,7 @@ class FocusFragment : Fragment() {
                         } else {
                             snapHelper.attachToRecyclerView(b.rvRuler)
                             b.btnStartConfig.isEnabled = true
-                            b.tvMinutes.text = viewModel.selectedMins.toString()
+                            setMinsText(viewModel.selectedMins.toString())
                             scrollToMinute(viewModel.selectedMins, smooth = false)
                         }
                     }
@@ -96,7 +101,7 @@ class FocusFragment : Fragment() {
                             val minutes = (time / 60000).toInt()
                             val seconds = ((time % 60000) / 1000).toInt()
 
-                            b.tvMinutes.text = minutes.toString()
+                            setMinsText(minutes.toString())
                             b.tvSeconds.text = String.format(Locale.getDefault(), ":%02d", seconds)
 
                             if (b.rvRuler.width > 0 && b.rvRuler.isNotEmpty()) {
@@ -164,11 +169,7 @@ class FocusFragment : Fragment() {
             }
         }
 
-        // Tap the big minutes number to type an exact duration instead of scrolling the ruler.
-        binding.tvMinutes.setOnClickListener {
-            if (viewModel.currentRunningFocus.value.first != null) return@setOnClickListener
-            showDurationInputDialog()
-        }
+        setupMinutesInput()
 
         binding.btnHelp.setOnClickListener {
             ViewUtils.showHelpPopup(it, "Focus mode helps you stay away from distractions for a set period of time.", "https://curbox.app/docs/focus/focus-mode/")
@@ -351,51 +352,75 @@ class FocusFragment : Fragment() {
     }
 
 
-    private fun showDurationInputDialog() {
-        val ctx = context ?: return
-        val input = com.google.android.material.textfield.TextInputEditText(ctx).apply {
-            inputType = android.text.InputType.TYPE_CLASS_NUMBER
-            setText(viewModel.selectedMins.toString())
-            setSelectAllOnFocus(true)
+    // Wires the big minutes number for inline editing: type a value and the ruler follows.
+    private fun setupMinutesInput() {
+        val field = binding.tvMinutes
+        field.setSelectAllOnFocus(true)
+
+        field.doAfterTextChanged { editable ->
+            // Ignore our own writes (ruler scroll, timer tick) and edits while a focus runs.
+            if (isSettingMinsText || viewModel.currentRunningFocus.value.first != null) return@doAfterTextChanged
+            val mins = editable?.toString()?.toIntOrNull() ?: return@doAfterTextChanged
+            // Move the ruler to match without rewriting the text the user is typing.
+            viewModel.selectedMins = mins.coerceIn(1, 240)
+            val b = _binding ?: return@doAfterTextChanged
+            isProgrammaticScroll = true
+            (b.rvRuler.layoutManager as? LinearLayoutManager)
+                ?.scrollToPositionWithOffset(viewModel.selectedMins, 0)
+            b.rvRuler.postDelayed({ isProgrammaticScroll = false }, 300)
         }
-        val container = com.google.android.material.textfield.TextInputLayout(ctx).apply {
-            hint = getString(R.string.common_mins)
-            val pad = (24 * resources.displayMetrics.density).toInt()
-            setPadding(pad, 0, pad, 0)
-            addView(input)
-        }
-        val dialog = com.google.android.material.dialog.MaterialAlertDialogBuilder(ctx)
-            .setTitle(R.string.focus_set_duration_title)
-            .setView(container)
-            .setPositiveButton(android.R.string.ok) { _, _ ->
-                val mins = input.text?.toString()?.toIntOrNull() ?: return@setPositiveButton
-                scrollToMinute(mins.coerceIn(1, 240), smooth = false)
+
+        // Done on the keyboard commits and closes the edit.
+        field.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE) {
+                field.clearFocus()
+                true
+            } else {
+                false
             }
-            .setNegativeButton(android.R.string.cancel, null)
-            .create()
-
-        // Freeze background resizing when the keyboard pops up, so the navbar doesn't jump around
-        val hostWindow = activity?.window
-        val prevSoftInput = hostWindow?.attributes?.softInputMode
-        hostWindow?.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING)
-        dialog.setOnDismissListener {
-            prevSoftInput?.let { hostWindow.setSoftInputMode(it) }
         }
 
-        // Select the current number so typing replaces it right away.
-        dialog.setOnShowListener {
-            input.requestFocus()
-            input.selectAll()
-            (ctx.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager)
-                ?.showSoftInput(input, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+        // Freeze the window while editing so the navbar does not jump, and normalize on exit.
+        field.setOnFocusChangeListener { _, hasFocus ->
+            val window = activity?.window ?: return@setOnFocusChangeListener
+            if (hasFocus) {
+                prevSoftInputMode = window.attributes.softInputMode
+                window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING)
+            } else {
+                prevSoftInputMode?.let { window.setSoftInputMode(it) }
+                prevSoftInputMode = null
+                (activity?.getSystemService(android.content.Context.INPUT_METHOD_SERVICE)
+                    as? android.view.inputmethod.InputMethodManager)
+                    ?.hideSoftInputFromWindow(field.windowToken, 0)
+                // Snap the displayed text back to the coerced value (fills blanks, clamps).
+                if (viewModel.currentRunningFocus.value.first == null) {
+                    setMinsText(viewModel.selectedMins.toString())
+                }
+            }
         }
-        dialog.show()
+    }
+
+    // Sets the minutes field in code without triggering its edit watcher.
+    private fun setMinsText(text: String) {
+        val field = _binding?.tvMinutes ?: return
+        if (field.text?.toString() == text) return
+        isSettingMinsText = true
+        field.setText(text)
+        isSettingMinsText = false
+    }
+
+    private fun setMinutesEditable(editable: Boolean) {
+        val field = _binding?.tvMinutes ?: return
+        field.isFocusable = editable
+        field.isFocusableInTouchMode = editable
+        field.isCursorVisible = editable
+        if (!editable) field.clearFocus()
     }
 
     private fun updateTime(pos:Int){
         val b = _binding ?: return
         viewModel.selectedMins = pos.coerceAtLeast(1)
-        b.tvMinutes.text = viewModel.selectedMins.toString()
+        setMinsText(viewModel.selectedMins.toString())
         b.tvSeconds.text = getString(R.string.common_mins)
     }
 

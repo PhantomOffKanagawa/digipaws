@@ -22,12 +22,20 @@
             app:layout_constraintBottom_toTopOf="@+id/tvMinutes"
             app:layout_constraintStart_toStartOf="parent" />
 
-        <TextView
+        <EditText
             android:id="@+id/tvMinutes"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:background="@null"
             android:fontFamily="@font/coolvetica"
+            android:importantForAutofill="no"
             android:includeFontPadding="false"
+            android:imeOptions="actionDone"
+            android:inputType="number"
+            android:maxLength="3"
+            android:maxLines="1"
+            android:minWidth="90dp"
+            android:padding="0dp"
             android:text="@string/default_focus_duration_value"
             android:textColor="?attr/colorOnSurface"
             android:textSize="150sp"

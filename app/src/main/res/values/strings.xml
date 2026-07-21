@@ -329,7 +329,6 @@
     <string name="toast_unsupported_browser">Unsupported Browser</string>
     <string name="notification_title_remaining_usage">Remaining usage before lockdown</string>
     <string name="notification_title_focus_mode_on">Focus Mode is on</string>
-    <string name="focus_set_duration_title">Set focus minutes</string>
 
     <string name="nfc_focus_started">Focus started: %1$s (%2$d min)</string>
     <string name="nfc_focus_stopped">Focus stopped</string>
