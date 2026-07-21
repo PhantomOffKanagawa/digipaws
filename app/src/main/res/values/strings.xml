@@ -1582,6 +1582,7 @@
     <string name="usage_icons_grayscale">Gray app icons on the usage page</string>
     <string name="ascii_art_settings">Art on the usage page</string>
     <string name="ascii_art_settings_description">I show a piece of art at the top of the usage page. Turn off the ones you do not want to see.</string>
+    <string name="ascii_art_choose">Choose which art shows</string>
     <string name="ascii_label_brain">Brain</string>
     <string name="ascii_label_aim">Target</string>
     <string name="ascii_label_star1">Star 1</string>

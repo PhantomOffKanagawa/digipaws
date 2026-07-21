@@ -80,8 +80,6 @@ class InfoFragment : Fragment() {
     }
 
     private var renderingDisplaySettings = false
-    // One switch per ASCII art, built once and kept so the settings collector can refresh them.
-    private val asciiSwitches = mutableMapOf<String, com.google.android.material.materialswitch.MaterialSwitch>()
 
     private fun setupDisplaySettings() {
         binding.switchUsageIconsGrayscale.setOnCheckedChangeListener { _, checked ->
@@ -90,23 +88,8 @@ class InfoFragment : Fragment() {
             }
         }
 
-        val container = binding.asciiToggleContainer
-        neth.iecal.curbox.hardcoded.AsciiArts.POOL.forEach { art ->
-            val switch = com.google.android.material.materialswitch.MaterialSwitch(requireContext()).apply {
-                text = getString(art.labelRes)
-                minHeight = (56 * resources.displayMetrics.density).toInt()
-                setOnCheckedChangeListener { _, checked ->
-                    if (renderingDisplaySettings) return@setOnCheckedChangeListener
-                    viewLifecycleOwner.lifecycleScope.launch {
-                        val current = dataStore.settings.first().disabledAsciiArts.toMutableSet()
-                        // Switch on = art shown = key absent from the disabled set.
-                        if (checked) current.remove(art.key) else current.add(art.key)
-                        dataStore.updateDisabledAsciiArts(current.toList())
-                    }
-                }
-            }
-            asciiSwitches[art.key] = switch
-            container.addView(switch)
+        binding.btnChooseAscii.setOnClickListener {
+            viewLifecycleOwner.lifecycleScope.launch { showAsciiChooserDialog() }
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
@@ -114,14 +97,31 @@ class InfoFragment : Fragment() {
                 dataStore.settings.collect { settings ->
                     renderingDisplaySettings = true
                     binding.switchUsageIconsGrayscale.isChecked = settings.usageIconsGrayscale
-                    val disabled = settings.disabledAsciiArts.toSet()
-                    asciiSwitches.forEach { (key, switch) ->
-                        switch.isChecked = key !in disabled
-                    }
                     renderingDisplaySettings = false
                 }
             }
         }
+    }
+
+    private suspend fun showAsciiChooserDialog() {
+        val pool = neth.iecal.curbox.hardcoded.AsciiArts.POOL
+        val labels = pool.map { getString(it.labelRes) }.toTypedArray()
+        val disabled = dataStore.settings.first().disabledAsciiArts.toMutableSet()
+        // Checked = art shown = key absent from the disabled set.
+        val checked = pool.map { it.key !in disabled }.toBooleanArray()
+
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.ascii_art_choose)
+            .setMultiChoiceItems(labels, checked) { _, which, isChecked ->
+                if (isChecked) disabled.remove(pool[which].key) else disabled.add(pool[which].key)
+            }
+            .setPositiveButton(R.string.okay) { _, _ ->
+                viewLifecycleOwner.lifecycleScope.launch {
+                    dataStore.updateDisabledAsciiArts(disabled.toList())
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 
     // Account and sync live here in the Play Store build only. F-Droid stays
