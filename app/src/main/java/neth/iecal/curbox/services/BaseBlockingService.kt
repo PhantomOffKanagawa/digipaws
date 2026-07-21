@@ -89,6 +89,10 @@ open class BaseBlockingService : AccessibilityService() {
     private fun startForegroundService() {
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
 
+        // Remove the obsolete second channel an earlier build created, so upgraders don't see
+        // two "Blocking Service" entries in Android settings. Harmless if it never existed.
+        notificationManager.deleteNotificationChannel("blocking_service_channel_min")
+
         // Its own dedicated channel so the user can turn this one notification down or off in
         // Android settings without touching Curbox's other notifications (timers, warnings...).
         notificationManager.createNotificationChannel(
