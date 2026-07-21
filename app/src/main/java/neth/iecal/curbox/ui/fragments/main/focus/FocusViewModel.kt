@@ -126,6 +126,37 @@ class FocusViewModel(application: Application) : AndroidViewModel(application) {
             requestFocusBlockerRefresh()
         }
     }
+    /**
+     * Switches a running, exitable focus session to a different group while keeping the same end
+     * time. Closes the current session's stats and opens one for the new group.
+     */
+    fun switchActiveGroup(newGroup: ManualFocusGroup) {
+        val (currentId, endTime) = _currentRunningFocus.value
+        if (currentId == null || currentId == newGroup.groupId) return
+        val now = System.currentTimeMillis()
+        val remaining = endTime - now
+        if (remaining <= 0) return
+        viewModelScope.launch {
+            val runningSessions = statsDao.getRunningSessions()
+            for (session in runningSessions) {
+                statsDao.update(session.copy(status = 2, actualEndTimeInMillis = now))
+            }
+            statsDao.insert(
+                neth.iecal.curbox.data.db.FocusStatsEntity(
+                    groupId = newGroup.groupId,
+                    startTimeInMillis = now,
+                    estimatedEndTimeInMillis = endTime,
+                    actualEndTimeInMillis = 0L,
+                    status = 0
+                )
+            )
+            selectedGroup = newGroup
+            prefs.edit().putString("lastFocusGroupId", newGroup.groupId).apply()
+            dataStoreManager.setManualFocusStateToActive(newGroup.groupId, remaining)
+            requestFocusBlockerRefresh()
+        }
+    }
+
     fun addGroup(group: ManualFocusGroup) {
         val updatedGroups = _groups.value.toMutableList().apply { add(group) }
         updateGroups(updatedGroups)

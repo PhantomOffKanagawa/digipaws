@@ -79,6 +79,8 @@ class FocusFragment : Fragment() {
                             val group = groups.find { it.groupId == groupId }
                             b.tvActiveGroup.text = group?.groupName
                             b.btnStartConfig.isEnabled = group?.exitable == true
+                            // In an exitable session, tapping the name lets you switch groups.
+                            setupActiveGroupSwitch(group?.exitable == true, groupId)
                             viewModel.startTimer(endTime)
                         } else {
                             snapHelper.attachToRecyclerView(b.rvRuler)
@@ -397,6 +399,37 @@ class FocusFragment : Fragment() {
                     setMinsText(viewModel.selectedMins.toString())
                 }
             }
+        }
+    }
+
+    // Makes the active group name tappable during an exitable session so the user can pick a
+    // different group to switch to for the rest of the session.
+    private fun setupActiveGroupSwitch(exitable: Boolean, currentGroupId: String?) {
+        val label = _binding?.tvActiveGroup ?: return
+        if (!exitable) {
+            label.setOnClickListener(null)
+            label.isClickable = false
+            label.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, 0, 0)
+            return
+        }
+        // A small chevron hints the name can be tapped to switch groups.
+        label.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, R.drawable.ic_chevron_down, 0)
+        label.compoundDrawablePadding = (4 * resources.displayMetrics.density).toInt()
+        label.setOnClickListener { anchor ->
+            val others = viewModel.groups.value.filter { it.groupId != currentGroupId }
+            if (others.isEmpty()) {
+                Toast.makeText(requireContext(), R.string.focus_no_other_groups, Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            val popup = android.widget.PopupMenu(requireContext(), anchor)
+            others.forEachIndexed { index, group ->
+                popup.menu.add(0, index, index, group.groupName)
+            }
+            popup.setOnMenuItemClickListener { item ->
+                viewModel.switchActiveGroup(others[item.itemId])
+                true
+            }
+            popup.show()
         }
     }
 
