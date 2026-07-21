@@ -364,7 +364,7 @@ class FocusFragment : Fragment() {
             setPadding(pad, 0, pad, 0)
             addView(input)
         }
-        com.google.android.material.dialog.MaterialAlertDialogBuilder(ctx)
+        val dialog = com.google.android.material.dialog.MaterialAlertDialogBuilder(ctx)
             .setTitle(R.string.focus_set_duration_title)
             .setView(container)
             .setPositiveButton(android.R.string.ok) { _, _ ->
@@ -372,7 +372,24 @@ class FocusFragment : Fragment() {
                 scrollToMinute(mins.coerceIn(1, 240), smooth = false)
             }
             .setNegativeButton(android.R.string.cancel, null)
-            .show()
+            .create()
+
+        // Freeze background resizing when the keyboard pops up, so the navbar doesn't jump around
+        val hostWindow = activity?.window
+        val prevSoftInput = hostWindow?.attributes?.softInputMode
+        hostWindow?.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING)
+        dialog.setOnDismissListener {
+            prevSoftInput?.let { hostWindow.setSoftInputMode(it) }
+        }
+
+        // Select the current number so typing replaces it right away.
+        dialog.setOnShowListener {
+            input.requestFocus()
+            input.selectAll()
+            (ctx.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager)
+                ?.showSoftInput(input, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+        }
+        dialog.show()
     }
 
     private fun updateTime(pos:Int){
