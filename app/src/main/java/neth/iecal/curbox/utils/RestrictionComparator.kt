@@ -1,5 +1,6 @@
 package neth.iecal.curbox.utils
 
+import neth.iecal.curbox.data.models.intervalsForDay
 import com.google.gson.Gson
 import neth.iecal.curbox.data.models.AppBlockerWarningScreenConfig
 import neth.iecal.curbox.data.models.AppBlockingType
@@ -121,8 +122,8 @@ object RestrictionComparator {
                 val o = parse<ReelTimeConfig>(old.settings) ?: return false
                 val n = parse<ReelTimeConfig>(new.settings) ?: return false
                 timeCoverageSameOrWider(
-                    oldFor = { day -> if (o.isEveryday) o.everydayIntervals else o.dailyIntervals[day] ?: mutableListOf() },
-                    newFor = { day -> if (n.isEveryday) n.everydayIntervals else n.dailyIntervals[day] ?: mutableListOf() }
+                    oldFor = { day -> o.intervalsForDay(day) },
+                    newFor = { day -> n.intervalsForDay(day) }
                 )
             }
             ReelBlockingType.USAGE -> {
@@ -199,8 +200,8 @@ object RestrictionComparator {
      */
     private fun appTimeCoverageSameOrWider(old: AppTimeConfig, new: AppTimeConfig): Boolean {
         return timeCoverageSameOrWider(
-            oldFor = { day -> if (old.isEveryday) old.everydayIntervals else old.dailyIntervals[day] ?: mutableListOf() },
-            newFor = { day -> if (new.isEveryday) new.everydayIntervals else new.dailyIntervals[day] ?: mutableListOf() }
+            oldFor = { day -> old.intervalsForDay(day) },
+            newFor = { day -> new.intervalsForDay(day) }
         )
     }
 

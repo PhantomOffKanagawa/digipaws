@@ -130,7 +130,7 @@
     <string name="duration_15_seconds">15 sec</string>
     <string name="duration_30_seconds">30 sec</string>
     <string name="allowed_time_ranges">Allowed Time Ranges</string>
-    <string name="apply_to_every_day">Apply to every day</string>
+    <string name="apply_to_every_day">Apply to every active day</string>
     <string name="add_time_range">Add Time Range</string>
     <string name="save_time_ranges">Save Time Ranges</string>
     <string name="monday">Monday</string>

@@ -18,8 +18,26 @@ enum class AppBlockingType{
 data class AppTimeConfig(
     var isEveryday: Boolean = true,
     var everydayIntervals: MutableList<TimeInterval> = mutableListOf(TimeInterval()),
-    var dailyIntervals: MutableMap<Int, MutableList<TimeInterval>> = mutableMapOf()
+    var dailyIntervals: MutableMap<Int, MutableList<TimeInterval>> = mutableMapOf(),
+    /**
+     * In "every active day" mode ([isEveryday]), the day indices the everyday schedule applies to.
+     * Null means every day (legacy configs saved before this field existed, and the default).
+     * Day indices are in the same space the editing UI used, so callers must pass their own.
+     */
+    var activeDays: List<Int>? = null
 )
+
+/**
+ * The intervals in force on [day], honoring "every active day": in everyday mode the shared
+ * schedule applies only to [AppTimeConfig.activeDays] (null = all days); otherwise the day's own
+ * intervals. [day] must be in the same index space the editing UI used for this config.
+ */
+fun AppTimeConfig.intervalsForDay(day: Int): List<TimeInterval> =
+    if (isEveryday) {
+        if (activeDays?.contains(day) != false) everydayIntervals else emptyList()
+    } else {
+        dailyIntervals[day] ?: emptyList()
+    }
 
 
 data class AppUsageConfig(

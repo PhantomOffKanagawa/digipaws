@@ -1,5 +1,6 @@
 package neth.iecal.curbox.anti_stimulants
 
+import neth.iecal.curbox.data.models.intervalsForDay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -53,9 +54,9 @@ class AutoDnd {
             if (!group.autoTurnOnDnd) continue
 
             val config = group.timeConfig
-            val intervals = if (config.isEveryday) config.everydayIntervals else config.dailyIntervals[currentDay]
+            val intervals = config.intervalsForDay(currentDay)
 
-            if (intervals != null && intervals.any { isWithinInterval(currentMinutes, it) }) {
+            if (intervals.any { isWithinInterval(currentMinutes, it) }) {
                 shouldBeOn = true
                 break
             }

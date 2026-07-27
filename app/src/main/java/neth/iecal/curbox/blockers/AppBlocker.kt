@@ -1,5 +1,6 @@
 package neth.iecal.curbox.blockers
 
+import neth.iecal.curbox.data.models.intervalsForDay
 import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
@@ -447,7 +448,7 @@ class AppBlocker() : BaseBlocker() {
         val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK) - 1
 
         Log.d("day of week", dayOfWeek.toString())
-        val intervals = if (config.isEveryday) config.everydayIntervals else config.dailyIntervals[dayOfWeek] ?: emptyList()
+        val intervals = config.intervalsForDay(dayOfWeek)
 
         intervals.forEach { interval ->
             val startMinutes = TimeTools.convertToMinutesFromMidnight(interval.startHour, interval.startMinute)

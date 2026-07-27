@@ -59,7 +59,9 @@ abstract class BaseTimeSettingsFragment : BottomSheetDialogFragment() {
 
         switchEveryDay.setOnCheckedChangeListener { _, isChecked ->
             everydayContainer.visibility = if (isChecked) View.VISIBLE else View.GONE
-            daysAdapter.isInteractionEnabled = !isChecked
+            // In "every active day" mode the day switches still toggle which days apply; only the
+            // per-day interval editing is hidden (the shared schedule is used instead).
+            daysAdapter.showPerDayIntervals = !isChecked
         }
 
         btnAddEverydayInterval.setOnClickListener {
@@ -118,17 +120,24 @@ abstract class BaseTimeSettingsFragment : BottomSheetDialogFragment() {
     private fun loadExistingSettings() {
         val config = getTimeConfig()
         switchEveryDay.isChecked = config.isEveryday
-        daysAdapter.isInteractionEnabled = !config.isEveryday
+        daysAdapter.showPerDayIntervals = !config.isEveryday
 
         everydayIntervals.clear()
         everydayIntervals.addAll(config.everydayIntervals.map { it.copy() })
         everydayAdapter.notifyDataSetChanged()
 
+        val activeDays = config.activeDays
         dayItems.forEach { dayItem ->
             val intervals = config.dailyIntervals[dayItem.dayIndex] ?: mutableListOf()
-            dayItem.isActive = intervals.isNotEmpty()
             dayItem.intervals.clear()
             dayItem.intervals.addAll(intervals.map { it.copy() })
+            // In every-active-day mode the toggle reflects the saved active days (null = all).
+            // Otherwise it reflects whether that day has its own intervals.
+            dayItem.isActive = if (config.isEveryday) {
+                activeDays?.contains(dayItem.dayIndex) != false
+            } else {
+                intervals.isNotEmpty()
+            }
         }
         daysAdapter.notifyDataSetChanged()
     }
@@ -141,7 +150,9 @@ abstract class BaseTimeSettingsFragment : BottomSheetDialogFragment() {
             AppTimeConfig(
                 isEveryday = switchEveryDay.isChecked,
                 everydayIntervals = everydayIntervals.map { it.copy() }.toMutableList(),
-                dailyIntervals = dailyIntervals
+                dailyIntervals = dailyIntervals,
+                // Which days the shared schedule covers in every-active-day mode.
+                activeDays = dayItems.filter { it.isActive }.map { it.dayIndex }
             )
         )
     }

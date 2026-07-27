@@ -1,5 +1,6 @@
 package neth.iecal.curbox.anti_stimulants
 
+import neth.iecal.curbox.data.models.intervalsForDay
 import android.annotation.SuppressLint
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -68,13 +69,9 @@ class GrayScaleFilter : BaseBlocker() {
 
                 if (group.packages.contains(currentPackageName)) {
                     val config = group.timeConfig
-                    val intervals = if (config.isEveryday) {
-                        config.everydayIntervals
-                    } else {
-                        config.dailyIntervals[currentDay]
-                    }
+                    val intervals = config.intervalsForDay(currentDay)
 
-                    if (intervals == null || intervals.isEmpty()) {
+                    if (intervals.isEmpty()) {
                         shouldGrayscale = true
                         break
                     } else {

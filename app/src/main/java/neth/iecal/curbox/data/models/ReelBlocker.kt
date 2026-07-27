@@ -15,8 +15,18 @@ enum class ReelBlockingType{
 data class ReelTimeConfig(
     var isEveryday: Boolean = true,
     var everydayIntervals: MutableList<TimeInterval> = mutableListOf(),
-    var dailyIntervals: MutableMap<Int, MutableList<TimeInterval>> = mutableMapOf()
+    var dailyIntervals: MutableMap<Int, MutableList<TimeInterval>> = mutableMapOf(),
+    /** See [AppTimeConfig.activeDays]. Null means every day. */
+    var activeDays: List<Int>? = null
 )
+
+/** See [intervalsForDay] for AppTimeConfig; same "every active day" semantics. */
+fun ReelTimeConfig.intervalsForDay(day: Int): List<TimeInterval> =
+    if (isEveryday) {
+        if (activeDays?.contains(day) != false) everydayIntervals else emptyList()
+    } else {
+        dailyIntervals[day] ?: emptyList()
+    }
 
 
 data class ReelUsageConfig(

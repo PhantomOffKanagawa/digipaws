@@ -84,6 +84,14 @@ class DayAdapter(
             notifyDataSetChanged()
         }
 
+    // When false, days can still be toggled on/off but their per-day interval editing is hidden.
+    // Used by "every active day" mode, where the shared schedule applies to the toggled-on days.
+    var showPerDayIntervals: Boolean = true
+        set(value) {
+            field = value
+            notifyDataSetChanged()
+        }
+
     class ViewHolder(val binding: ItemDayTimeRangesBinding) : RecyclerView.ViewHolder(binding.root)
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -110,15 +118,15 @@ class DayAdapter(
             holder.binding.root.setOnClickListener(null)
         }
 
-        holder.binding.intervalsContainer.visibility = if (day.isActive) View.VISIBLE else View.GONE
-        holder.binding.btnAddInterval.visibility = if (day.isActive && isInteractionEnabled) View.VISIBLE else View.GONE
+        holder.binding.intervalsContainer.visibility = if (day.isActive && showPerDayIntervals) View.VISIBLE else View.GONE
+        holder.binding.btnAddInterval.visibility = if (day.isActive && isInteractionEnabled && showPerDayIntervals) View.VISIBLE else View.GONE
 
         holder.binding.switchDayActive.setOnCheckedChangeListener { _, isChecked ->
             if (onDayToggled(day, holder.adapterPosition, isChecked)) {
                 day.isActive = isChecked
-                holder.binding.intervalsContainer.visibility = if (isChecked) View.VISIBLE else View.GONE
-                holder.binding.btnAddInterval.visibility = if (isChecked) View.VISIBLE else View.GONE
-                if (isChecked && day.intervals.isEmpty()) {
+                holder.binding.intervalsContainer.visibility = if (isChecked && showPerDayIntervals) View.VISIBLE else View.GONE
+                holder.binding.btnAddInterval.visibility = if (isChecked && showPerDayIntervals) View.VISIBLE else View.GONE
+                if (isChecked && day.intervals.isEmpty() && showPerDayIntervals) {
                     onAddTimeInterval(day, holder.adapterPosition)
                 }
             } else {

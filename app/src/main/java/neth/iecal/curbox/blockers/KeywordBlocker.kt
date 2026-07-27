@@ -1,5 +1,6 @@
 package neth.iecal.curbox.blockers
 
+import neth.iecal.curbox.data.models.intervalsForDay
 import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
@@ -267,8 +268,7 @@ class KeywordBlocker : BaseBlocker() {
             calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE)
         )
         val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK) - 1
-        val intervals = if (config.isEveryday) config.everydayIntervals
-                        else config.dailyIntervals[dayOfWeek] ?: emptyList()
+        val intervals = config.intervalsForDay(dayOfWeek)
 
         for (interval in intervals) {
             val start = TimeTools.convertToMinutesFromMidnight(interval.startHour, interval.startMinute)
@@ -330,8 +330,7 @@ class KeywordBlocker : BaseBlocker() {
                     calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE)
                 )
                 val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK) - 1
-                val intervals = if (config.isEveryday) config.everydayIntervals
-                                else config.dailyIntervals[dayOfWeek] ?: emptyList()
+                val intervals = config.intervalsForDay(dayOfWeek)
 
                 // We are inside an allowed window; re-check when it ends so the block kicks in.
                 var minMinutesUntilEnd = Int.MAX_VALUE

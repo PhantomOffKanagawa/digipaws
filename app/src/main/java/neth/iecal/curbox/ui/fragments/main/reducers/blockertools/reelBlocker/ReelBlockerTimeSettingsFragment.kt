@@ -22,10 +22,12 @@ class ReelBlockerTimeSettingsFragment : BaseTimeSettingsFragment() {
 
     override fun getTimeConfig(): AppTimeConfig {
         val c = viewModel.getReelTimeConfig()
-        return AppTimeConfig(c.isEveryday, c.everydayIntervals, c.dailyIntervals)
+        return AppTimeConfig(c.isEveryday, c.everydayIntervals, c.dailyIntervals, c.activeDays)
     }
 
     override fun saveTimeConfig(config: AppTimeConfig) {
-        viewModel.saveReelTimeConfig(ReelTimeConfig(config.isEveryday, config.everydayIntervals, config.dailyIntervals))
+        viewModel.saveReelTimeConfig(
+            ReelTimeConfig(config.isEveryday, config.everydayIntervals, config.dailyIntervals, config.activeDays)
+        )
     }
 }
