@@ -9,13 +9,16 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import neth.iecal.curbox.BuildConfig
 import neth.iecal.curbox.data.sync.SyncGateway
@@ -32,6 +35,43 @@ class InfoFragment : Fragment() {
     private val dataStore by lazy { DataStoreManager(requireContext()) }
     private var renderingTrackingSettings = false
 
+    private val exportSettingsLauncher =
+        registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+            uri ?: return@registerForActivityResult
+            viewLifecycleOwner.lifecycleScope.launch {
+                try {
+                    val json = dataStore.exportSettingsJson()
+                    withContext(Dispatchers.IO) {
+                        requireContext().contentResolver.openOutputStream(uri)?.use {
+                            it.write(json.toByteArray())
+                        }
+                    }
+                    Toast.makeText(requireContext(), R.string.backup_export_done, Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    Toast.makeText(requireContext(), R.string.backup_export_failed, Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+
+    private val importSettingsLauncher =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            uri ?: return@registerForActivityResult
+            viewLifecycleOwner.lifecycleScope.launch {
+                val json = try {
+                    withContext(Dispatchers.IO) {
+                        requireContext().contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                    }
+                } catch (e: Exception) {
+                    null
+                }
+                if (json == null) {
+                    Toast.makeText(requireContext(), R.string.backup_import_failed, Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+                confirmImport(json)
+            }
+        }
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -46,6 +86,7 @@ class InfoFragment : Fragment() {
         setupAccountSection()
         setupUsageTrackingSettings()
         setupDisplaySettings()
+        setupBackup()
         setupClickListeners()
         LanguageUtils.bindLanguageSelector(binding.languageSelector, binding.textCurrentLanguage)
     }
@@ -116,6 +157,51 @@ class InfoFragment : Fragment() {
             }
             .setNegativeButton(R.string.cancel, null)
             .show()
+    }
+
+    private fun setupBackup() {
+        binding.btnExportSettings.setOnClickListener {
+            exportSettingsLauncher.launch("curbox_settings.json")
+        }
+        binding.btnImportSettings.setOnClickListener {
+            importSettingsLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
+        }
+    }
+
+    private fun confirmImport(json: String) {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.backup_import)
+            .setMessage(R.string.backup_import_confirm)
+            .setPositiveButton(R.string.backup_import) { _, _ ->
+                viewLifecycleOwner.lifecycleScope.launch {
+                    val ok = dataStore.importSettingsJson(json)
+                    if (ok) {
+                        broadcastSettingsRefresh()
+                        Toast.makeText(requireContext(), R.string.backup_import_done, Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(requireContext(), R.string.backup_import_invalid, Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    // Nudges the service process to reload every feature after a full settings replace.
+    private fun broadcastSettingsRefresh() {
+        val ctx = requireContext()
+        val actions = listOf(
+            "neth.iecal.curbox.refresh.appblocker",
+            "neth.iecal.curbox.refresh.reelblocker",
+            "neth.iecal.curbox.refresh.keywordblocker.config",
+            "neth.iecal.curbox.refresh.focus_mode",
+            "neth.iecal.curbox.refresh.grayscale",
+            "neth.iecal.curbox.refresh.reel_counter",
+            "neth.iecal.curbox.refresh.uihider"
+        )
+        actions.forEach { action ->
+            ctx.sendBroadcast(Intent(action).setPackage(ctx.packageName))
+        }
     }
 
     // Account and sync live here in the Play Store build only. F-Droid stays

@@ -1,5 +1,6 @@
 package neth.iecal.curbox.utils
 
+import kotlinx.coroutines.flow.first
 import android.content.Context
 import android.content.Intent
 import android.os.Handler
@@ -73,6 +74,24 @@ class DataStoreManager(private val context: Context) {
     private val settingsDataStore = getSettingsDataStore(context, gson)
 
     val settings = settingsDataStore.data
+
+    /** Serializes the whole settings object to JSON for a backup file. */
+    suspend fun exportSettingsJson(): String =
+        gson.toJson(settings.first())
+
+    /**
+     * Replaces all settings from a previously exported JSON backup. Returns false if the JSON is
+     * not valid settings. Import bypasses the change delay on purpose: a restore is not a live edit.
+     */
+    suspend fun importSettingsJson(json: String): Boolean {
+        val imported = try {
+            gson.fromJson(json, Settings::class.java)
+        } catch (e: Exception) {
+            null
+        } ?: return false
+        settingsDataStore.updateData { imported }
+        return true
+    }
 
     suspend fun updateAppGroups(newGroups: List<AppGroup>) {
         updateGated(GatedSettingsField.APP_GROUPS) { newGroups }

@@ -1578,6 +1578,16 @@
     <string name="notification_action_resume_block">Block again now</string>
     <string name="notification_remaining_usage_reels_lockdown">Remaining usage before reels lockdown</string>
     <string name="usage_tracking_settings">Usage tracking</string>
+    <string name="backup_settings">Backup my settings</string>
+    <string name="backup_settings_description">I can save all my settings to a file, then load them back later. Handy when I move to a new build.</string>
+    <string name="backup_export">Save to a file</string>
+    <string name="backup_import">Load from a file</string>
+    <string name="backup_export_done">I saved your settings.</string>
+    <string name="backup_export_failed">I could not save the file.</string>
+    <string name="backup_import_confirm">This replaces all my current settings with the ones in the file. Are you sure?</string>
+    <string name="backup_import_done">I loaded your settings.</string>
+    <string name="backup_import_failed">I could not read that file.</string>
+    <string name="backup_import_invalid">That file is not a settings backup.</string>
     <string name="display_settings">Look and feel</string>
     <string name="usage_icons_grayscale">Gray all app icons</string>
     <string name="ascii_art_settings">Art on the usage page</string>
